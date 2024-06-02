@@ -1,5 +1,11 @@
 #include <iostream>
-
+#include <string>
+#include <stdexcept>
+#include <vector>
+#include <cctype>
+#include <cstring>
+#include <variant>
+#include <memory>
 std::string toLower(const std::string& str) 
 {
     std::string result = str;
@@ -260,14 +266,6 @@ public:
         garmentColor = colorName;
     }
     Pants& operator=(const Pants&) = delete;//operator=
-    {
-        if (this != &other)
-        {
-            garmentCode = other.garmentCode;
-            garmentColor = other.garmentColor;
-        }
-        return *this;
-    }
     Pants(const Pants&) = delete; //constructor de copiere
     friend std::ostream& operator<<(std::ostream& os, const Pants& p) //operator<<
     {
@@ -300,6 +298,140 @@ public:
     }
     ~Pants() = default;
 };
+
+class AlreadyAddedGarment: public std::runtime_error
+{
+public:
+    AlreadyAddedGarment(const std::string& message): std::runtime_error(message) {}
+};
+
+class NonExistentGarment: public std::invalid_argument
+{
+public:
+    NonExistentGarment(const std::string& message): std::invalid_argument(message) {}
+};
+
+class NothingToRemove: public std::logic_error
+{
+public:
+    NothingToRemove(const std::string& message): std::logic_error(message) {}
+};
+
+class Barbie
+{
+protected:
+    std::unique_ptr<Blouse> currentBlouse;
+    std::unique_ptr<Dress> currentDress;
+    std::unique_ptr<Skirt> currentSkirt;
+    std::unique_ptr<Pants> currentPants;
+    static int garmentCount;
+    static int numberOfChanges;
+public:
+    Barbie(): currentBlouse(nullptr), currentDress(nullptr), currentSkirt(nullptr), currentPants(nullptr) {}
+    template <typename T>
+    void addGarment(std::unique_ptr<T> garment) 
+    {
+        if (typeid(T) == typeid(Blouse)) 
+        {
+            if (currentBlouse)
+                throw AlreadyAddedGarment("Blouse already added!");
+            currentBlouse = std::move(garment);
+        } else if (typeid(T) == typeid(Dress)) 
+        {
+            if (currentDress)
+                throw AlreadyAddedGarment("Dress already added!");
+            currentDress = std::move(garment);
+        } else if (typeid(T) == typeid(Skirt)) 
+        {
+            if (currentSkirt)
+                throw AlreadyAddedGarment("Skirt already added!");
+            currentSkirt = std::move(garment);
+        } else if (typeid(T) == typeid(Pants)) 
+        {
+            if (currentPants)
+                throw AlreadyAddedGarment("Pants already added!");
+            currentPants = std::move(garment);
+        }
+        garmentCount++;
+        numberOfChanges++;
+        garment->addedGarment();
+    }
+    template<typename T>
+    void removeGarment() 
+    {
+        if (typeid(T) == typeid(Blouse)) 
+        {
+            if (!currentBlouse)
+                throw NothingToRemove("There is no blouse to remove!");
+            currentBlouse->removedGarment();
+            currentBlouse.reset();
+        } else if (typeid(T) == typeid(Dress)) 
+        {
+            if (!currentDress)
+                throw NothingToRemove("There is no dress to remove!");
+            currentDress->removedGarment();
+            currentDress.reset();
+        } else if (typeid(T) == typeid(Skirt)) 
+        {
+            if (!currentSkirt)
+                throw NothingToRemove("There is no skirt to remove!");
+            currentSkirt->removedGarment();
+            currentSkirt.reset();
+        } else if (typeid(T) == typeid(Pants)) 
+        {
+            if (!currentPants)
+                throw NothingToRemove("There are no pants to remove!");
+            currentPants->removedGarment();
+            currentPants.reset();
+        }
+        garmentCount--;
+        numberOfChanges++;
+    }
+    static int GetGarmentCount(void)
+    {
+        return garmentCount;
+    }
+    static void ViewChanges()
+    {
+        if (numberOfChanges == 0)
+            std::cout << "You haven't changed Barbie's look yet." << std::endl;
+        else if (numberOfChanges == 1)  
+            std::cout << "You've made " << numberOfChanges << " change at Barbie's look so far." << std::endl;
+        else std::cout << "You've made " << numberOfChanges << " changes at Barbie's look so far." << std::endl;
+    }
+};
+
+int Barbie::garmentCount = 0;
+int Barbie::numberOfChanges = 0;
+
+void checkNumber(int x)
+{
+    if (x != 1 and x != 2 and x != 3 and x != 4)
+        throw NonExistentGarment("Non-existent item!");
+}
+
+template <typename T> 
+void RemoveFromOutfit(std::vector<Garment*>& outfit) 
+{
+    for (auto it = outfit.begin(); it != outfit.end(); ++it)
+        if (dynamic_cast<T*>(*it) != nullptr)
+        {
+            outfit.erase(it);
+            return;
+        }
+}
+
+void Display(const Barbie& myBarbie)
+{
+    const int numberOfClothes = Barbie::GetGarmentCount();
+    if (numberOfClothes == 0)
+        std::cout << "Barbie isn' wearing anything at the moment." << std::endl;
+    else if (numberOfClothes == 1)
+        std::cout << "Barbie is wearing 1 piece of clothing at the moment." << std::endl;
+    else std::cout << "Barbie is wearing " << numberOfClothes << " pieces of clothing at the moment." << std::endl;
+    if (numberOfClothes != 0)
+        std::cout << "Barbie is wearing:\n";
+}
 
 int main()
 {
