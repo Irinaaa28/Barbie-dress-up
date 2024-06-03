@@ -79,7 +79,7 @@ public:
         garmentCode = blouseName;
         garmentColor = colorName;
     }
-    std::unique_ptr<Garment> clone() const override // Implementare metoda clone
+    std::unique_ptr<Garment> clone() const override   
     {
         return std::make_unique<Blouse>(*this);
     }
