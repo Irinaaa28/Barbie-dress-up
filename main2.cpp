@@ -6,6 +6,8 @@
 #include <cstring>
 #include <variant>
 #include <memory>
+#include <algorithm>
+
 std::string toLower(const std::string& str) 
 {
     std::string result = str;
@@ -34,6 +36,7 @@ public:
     virtual void describe() const = 0;
     virtual void addedGarment() const = 0;
     virtual void removedGarment() const = 0;
+    virtual std::unique_ptr<Garment> clone() const = 0;
     //implementing some functions from interface
     std::string getCode() const override
     {
@@ -43,15 +46,11 @@ public:
     {
         return garmentColor;
     }
-    bool isSameColor(const Garment& other) const
-    {
-        return garmentColor == other.garmentColor;
-    }
     bool isSameType(const Garment& other) const
     {
         return typeid(*this) == typeid(other);
     }
-    ~Garment() {}
+    virtual ~Garment() = default;
 };
 
 class Blouse : public Garment
@@ -80,6 +79,10 @@ public:
         garmentCode = blouseName;
         garmentColor = colorName;
     }
+    std::unique_ptr<Garment> clone() const override // Implementare metoda clone
+    {
+        return std::make_unique<Blouse>(*this);
+    }
     Blouse& operator=(const Blouse& other) //operator=
     {
         if(this != &other)
@@ -88,8 +91,8 @@ public:
             garmentColor = other.garmentColor;
         }
         return *this;
-    } 
-    Blouse(const Blouse& other): Garment(other) {} // Constructor de copiere
+    }
+    Blouse(const Blouse& other) : Garment(other) {} // Constructor de copiere
     friend std::ostream& operator<<(std::ostream& os, const Blouse& b) //operator<<
     {
         os << "Blouse: " << b.garmentCode << ", color: " << b.garmentColor;
@@ -119,7 +122,6 @@ public:
         }
         return *this;
     }
-    ~Blouse() = default;
 };
 
 class Dress : public Garment
@@ -142,6 +144,10 @@ public:
     void removedGarment() const override
     {
         std::cout << "Dress removed successfully!" << std::endl;
+    }
+    std::unique_ptr<Garment> clone() const override 
+    {
+        return std::make_unique<Dress>(*this);
     }
     void setDress(const std::string& dressName, const std::string& colorName) //setter
     {
@@ -187,7 +193,6 @@ public:
         }
         return *this;
     }
-    ~Dress() = default;
 };
 
 class Skirt : public Garment
@@ -215,6 +220,10 @@ public:
     {
         garmentCode = skirtName;
         garmentColor = colorName;
+    }
+    std::unique_ptr<Garment> clone() const override 
+    {
+        return std::make_unique<Skirt>(*this);
     }
     Skirt& operator=(const Skirt& other) //operator=
     {
@@ -255,7 +264,6 @@ public:
         }
         return *this;
     }
-    ~Skirt() = default;
 };
 
 class Pants : public Garment
@@ -279,7 +287,10 @@ public:
     {
         std::cout << "Pants removed successfully!" << std::endl;
     }
-
+    std::unique_ptr<Garment> clone() const override // Implementare metoda clone
+    {
+        return std::make_unique<Pants>(*this);
+    }
     void setPants(const std::string& pantsName, const std::string colorName) //setter
     {
         garmentCode = pantsName;
@@ -324,7 +335,6 @@ public:
         }
         return *this;
     }
-    ~Pants() = default;
 };
 
 class AlreadyAddedGarment: public std::runtime_error
@@ -352,6 +362,7 @@ protected:
     Dress* currentDress;
     Skirt* currentSkirt;
     Pants* currentPants;
+    std::vector<std::unique_ptr<Garment>> garments;
     static int garmentCount;
     static int numberOfChanges;
 public:

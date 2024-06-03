@@ -363,7 +363,7 @@ public:
         {
             if (currentBlouse)
                 throw AlreadyAddedGarment("Blouse already added!");
-            currentBlouse = static_cast<Blouse*>(garment);
+            currentBlouse = static_cast<Blouse>(garment);
         } else if (typeid(T) == typeid(Dress)) 
         {
             if (currentDress)
