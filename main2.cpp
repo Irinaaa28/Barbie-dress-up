@@ -367,62 +367,72 @@ protected:
     static int numberOfChanges;
 public:
     Barbie(): currentBlouse(nullptr), currentDress(nullptr), currentSkirt(nullptr), currentPants(nullptr) {}
-    template<typename T>
-    void addGarment(T*& currentGarment, const T& garment, const std::string& errorMessage)
+    void addGarment(std::unique_ptr<Garment> g, const std::string& errorMessage) 
     {
-        if (currentGarment)
-            throw AlreadyAddedGarment(errorMessage);
-        currentGarment = new T(garment);
+        for (const auto& garment : garments) 
+            if (garment->isSameType(*g)) 
+                throw AlreadyAddedGarment(errorMessage);
+        garments.push_back(std::move(g));
         garmentCount++;
         numberOfChanges++;
-        currentGarment->addedGarment();
     }
-    void addBlouse(const Blouse& blouse)
+    void addBlouse(std::unique_ptr<Blouse> blouse) 
     {
-        addGarment(currentBlouse, blouse, "blouse already added!");
+        addGarment(std::move(blouse), "blouse already added!");
+        if (!garments.empty()) 
+            garments.back()->addedGarment();
     }
-    void addDress(const Dress& dress)
+    void addDress(std::unique_ptr<Dress> dress) 
     {
-        addGarment(currentDress, dress, "dress already added!");
+        addGarment(std::move(dress), "dress already added!");
+        if (!garments.empty()) 
+            garments.back()->addedGarment();
     }
-    void addSkirt(const Skirt& skirt)
+    void addSkirt(std::unique_ptr<Skirt> skirt) 
     {
-        addGarment(currentSkirt, skirt, "skirt already added!");
+        addGarment(std::move(skirt), "skirt already added!");
+        if (!garments.empty()) 
+            garments.back()->addedGarment();
     }
-    void addPants(const Pants& pants)
+    void addPants(std::unique_ptr<Pants> pants) 
     {
-        addGarment(currentPants, pants, "pants already added!");
+        addGarment(std::move(pants), "pants already added!");
+        if (!garments.empty()) 
+            garments.back()->addedGarment();
     }
 
-    template<typename T>
-    void removeGarment(T*& currentGarment, const std::string& errorMessage)
+    template <typename T>
+    void removeGarment(const std::string& errorMessage) 
     {
-        if (!currentGarment)
-            throw NothingToRemove(errorMessage);
-        else
+        auto it = std::find_if(garments.begin(), garments.end(),[](const std::unique_ptr<Garment>& garment) 
         {
-            currentGarment->removedGarment();
-            delete currentGarment;
-            currentGarment = nullptr;
+            return dynamic_cast<T*>(garment.get()) != nullptr;
+        });
+        if (it != garments.end()) 
+        {
+            (*it)->removedGarment(); 
+            garments.erase(it);
             garmentCount--;
             numberOfChanges++;
-        }
+        } 
+        else 
+            throw NothingToRemove(errorMessage);
     }
-    void removeBlouse()
+    void removeBlouse() 
     {
-        removeGarment(currentBlouse, "There is no blouse to remove!");
+        removeGarment<Blouse>("There is no blouse to remove!");
     }
-    void removeDress()
+    void removeDress() 
     {
-        removeGarment(currentDress, "There is no dress to remove!");
+        removeGarment<Dress>("There is no dress to remove!");
     }
-    void removeSkirt()
+    void removeSkirt() 
     {
-        removeGarment(currentSkirt, "There is no skirt to remove!");
+        removeGarment<Skirt>("There is no skirt to remove!");
     }
     void removePants()
     {
-        removeGarment(currentPants, "There are no pants to remove!");
+        removeGarment<Pants>("There are no pants to remove!");
     }
     static int GetGarmentCount(void)
     {
@@ -435,13 +445,6 @@ public:
         else if (numberOfChanges == 1)  
             std::cout << "You've made " << numberOfChanges << " change at Barbie's look so far." << std::endl;
         else std::cout << "You've made " << numberOfChanges << " changes at Barbie's look so far." << std::endl;
-    }
-    ~Barbie()
-    {
-        delete currentBlouse;
-        delete currentDress;
-        delete currentSkirt;
-        delete currentPants;
     }
 };
 
@@ -459,20 +462,6 @@ void checkNumber(int x)
         throw NonExistentGarment("Non-existent item!");
 }
 
-template <typename T>
-void removeFromOutfit(std::vector<Garment*>& outfit)
-{
-    for (auto it = outfit.begin(); it != outfit.end(); ++it)
-    {
-        if (dynamic_cast<T*>(*it) != nullptr)
-        {
-            delete *it; 
-            outfit.erase(it);
-            return; 
-        }
-    }
-}
-
 void Display(const Barbie& myBarbie)
 {
     const int numberOfClothes = Barbie::GetGarmentCount();
@@ -487,12 +476,26 @@ void Display(const Barbie& myBarbie)
 
 int main()
 {
-    Blouse blouse1("#BT1CR", "Red"), blouse2("#BT1CB", "Blue"), blouse3("#BT1CG", "Green"), blouse4("#BT1CY", "Yellow");
-    Dress dress1("#DT1CR", "Red"), dress2("#DT1CB", "Blue"), dress3("#DT1CG", "Green"), dress4("#DT1CY", "Yellow");
-    Skirt skirt1("#ST1CR", "Red"), skirt2("#ST1CB", "Blue"), skirt3("#ST1CG", "Green"), skirt4("#ST1CY", "Yellow");
-    Pants pants1("#PT1CR", "Red"), pants2("#PT1CB", "Blue"), pants3("#PT1CG", "Green"), pants4("#PT1CY", "Yellow");
+    std::unique_ptr<Blouse> blouse1 = std::make_unique<Blouse>("#BT1CR", "Red");
+    std::unique_ptr<Blouse> blouse2 = std::make_unique<Blouse>("#BT1CB", "Blue");
+    std::unique_ptr<Blouse> blouse3 = std::make_unique<Blouse>("#BT1CG", "Green");
+    std::unique_ptr<Blouse> blouse4 = std::make_unique<Blouse>("#BT1CY", "Yellow");
 
-    std::vector<Garment*> outfit;
+    std::unique_ptr<Dress> dress1 = std::make_unique<Dress>("#DT1CR", "Red");
+    std::unique_ptr<Dress> dress2 = std::make_unique<Dress>("#DT1CB", "Blue");
+    std::unique_ptr<Dress> dress3 = std::make_unique<Dress>("#DT1CG", "Green");
+    std::unique_ptr<Dress> dress4 = std::make_unique<Dress>("#DT1CY", "Yellow");
+
+    std::unique_ptr<Skirt> skirt1 = std::make_unique<Skirt>("#ST1CR", "Red");
+    std::unique_ptr<Skirt> skirt2 = std::make_unique<Skirt>("#ST1CB", "Blue");
+    std::unique_ptr<Skirt> skirt3 = std::make_unique<Skirt>("#ST1CG", "Green");
+    std::unique_ptr<Skirt> skirt4 = std::make_unique<Skirt>("#ST1CY", "Yellow");
+
+    std::unique_ptr<Pants> pants1 = std::make_unique<Pants>("#PT1CR", "Red");
+    std::unique_ptr<Pants> pants2 = std::make_unique<Pants>("#PT1CB", "Blue");
+    std::unique_ptr<Pants> pants3 = std::make_unique<Pants>("#PT1CG", "Green");
+    std::unique_ptr<Pants> pants4 = std::make_unique<Pants>("#PT1CY", "Yellow");
+
     Barbie myBarbie;
 
     char key;
@@ -520,10 +523,10 @@ int main()
                     {
                         int numberBlouse;
                         std::cout << "Add a blouse code and a blouse color from the wardrobe:\n";
-                        describe_garment(blouse1);
-                        describe_garment(blouse2);
-                        describe_garment(blouse3);
-                        describe_garment(blouse4);
+                        blouse1->describe();
+                        blouse2->describe();
+                        blouse3->describe();
+                        blouse4->describe();
                         std::cin >> numberBlouse;
                         try
                         {
@@ -533,35 +536,23 @@ int main()
                         {
                             std::cerr << e.what() << '\n';
                         }
-                        if (numberBlouse == 1)
-                        {
-                            myBarbie.addBlouse(blouse1);
-                            outfit.push_back(new Blouse(blouse1.getCode(), blouse1.getColor()));
-                        }
-                        else if (numberBlouse == 2)
-                        {
-                            myBarbie.addBlouse(blouse2);
-                            outfit.push_back(new Blouse(blouse2.getCode(), blouse2.getColor()));
-                        }
-                        else if (numberBlouse == 3)
-                        {
-                            myBarbie.addBlouse(blouse3);
-                            outfit.push_back(new Blouse(blouse3.getCode(), blouse3.getColor()));
-                        }
-                        else if (numberBlouse == 4)
-                        {
-                            myBarbie.addBlouse(blouse4);
-                            outfit.push_back(new Blouse(blouse4.getCode(), blouse4.getColor()));
-                        }  
+                        if (numberBlouse == 1) 
+                            myBarbie.addBlouse(std::make_unique<Blouse>(*blouse1));
+                        else if (numberBlouse == 2) 
+                            myBarbie.addBlouse(std::make_unique<Blouse>(*blouse2));
+                        else if (numberBlouse == 3) 
+                            myBarbie.addBlouse(std::make_unique<Blouse>(*blouse3));
+                        else if (numberBlouse == 4) 
+                            myBarbie.addBlouse(std::make_unique<Blouse>(*blouse4));
                     }  
                     else if (toLower(addGarmentType) == "dress")
                     {
                         int numberDress;
                         std::cout << "Add a dress code and a dress color from the wardrobe:\n";
-                        describe_garment(dress1);
-                        describe_garment(dress2);
-                        describe_garment(dress3);
-                        describe_garment(dress4);
+                        dress1->describe();
+                        dress2->describe();
+                        dress3->describe();
+                        dress4->describe();
                         std::cin >> numberDress;
                         try
                         {
@@ -572,34 +563,22 @@ int main()
                             std::cerr << e.what() << '\n';
                         }
                         if (numberDress == 1)
-                        {
-                            myBarbie.addDress(dress1);
-                            outfit.push_back(new Dress(dress1.getCode(), dress1.getColor()));
-                        }
+                            myBarbie.addDress(std::make_unique<Dress>(*dress1));
                         else if (numberDress == 2)
-                        {
-                            myBarbie.addDress(dress2);
-                            outfit.push_back(new Dress(dress2.getCode(), dress2.getColor()));
-                        }
+                            myBarbie.addDress(std::make_unique<Dress>(*dress2));
                         else if (numberDress == 3)
-                        {
-                            myBarbie.addDress(dress3);
-                            outfit.push_back(new Dress(dress3.getCode(), dress3.getColor()));
-                        }
+                            myBarbie.addDress(std::make_unique<Dress>(*dress3));
                         else if (numberDress == 4)
-                        {
-                            myBarbie.addDress(dress4);
-                            outfit.push_back(new Dress(dress4.getCode(), dress4.getColor()));
-                        }
+                            myBarbie.addDress(std::make_unique<Dress>(*dress4));
                     }
                     else if (toLower(addGarmentType) == "skirt")
                     {
                         int numberSkirt;
                         std::cout << "Add a skirt code and a skirt color from the wardrobe:\n";
-                        describe_garment(skirt1);
-                        describe_garment(skirt2);
-                        describe_garment(skirt3);
-                        describe_garment(skirt4);
+                        skirt1->describe();
+                        skirt2->describe();
+                        skirt3->describe();
+                        skirt4->describe();
                         std::cin >> numberSkirt;
                         try
                         {
@@ -609,35 +588,23 @@ int main()
                         {
                            std::cerr << e.what() << '\n';
                         }
-                        if (numberSkirt == 1)
-                        {
-                            myBarbie.addSkirt(skirt1);
-                            outfit.push_back(new Skirt(skirt1.getCode(), skirt1.getColor()));
-                        }
-                        else if (numberSkirt == 2)
-                        {
-                            myBarbie.addSkirt(skirt2);
-                            outfit.push_back(new Skirt(skirt2.getCode(), skirt2.getColor()));
-                        }
-                        else if (numberSkirt == 3)
-                        {
-                            myBarbie.addSkirt(skirt3);
-                            outfit.push_back(new Skirt(skirt3.getCode(), skirt3.getColor()));
-                        }
-                        else if (numberSkirt == 4)
-                        {
-                            myBarbie.addSkirt(skirt4);
-                            outfit.push_back(new Skirt(skirt4.getCode(), skirt4.getColor()));
-                        }
+                        if (numberSkirt == 1) 
+                            myBarbie.addSkirt(std::make_unique<Skirt>(*skirt1));
+                        else if (numberSkirt == 2) 
+                            myBarbie.addSkirt(std::make_unique<Skirt>(*skirt2));
+                        else if (numberSkirt == 3) 
+                            myBarbie.addSkirt(std::make_unique<Skirt>(*skirt3));
+                        else if (numberSkirt == 4) 
+                            myBarbie.addSkirt(std::make_unique<Skirt>(*skirt4));
                     }
                     else if (toLower(addGarmentType) == "pants")
                     {
                         int numberPants;
                         std::cout << "Add a pants code and a pants color from the wardrobe:\n";
-                        describe_garment(pants1);
-                        describe_garment(pants2);
-                        describe_garment(pants3);
-                        describe_garment(pants4);
+                        pants1->describe();
+                        pants2->describe();
+                        pants3->describe();
+                        pants4->describe();
                         std::cin >> numberPants;
                         try
                         {
@@ -647,26 +614,14 @@ int main()
                         {
                             std::cerr << e.what() << '\n';
                         }
-                        if (numberPants == 1)
-                        {
-                            myBarbie.addPants(pants1);
-                            outfit.push_back(new Pants(pants1.getCode(), pants1.getColor()));
-                        }
-                        else if (numberPants == 2)
-                        {
-                            myBarbie.addPants(pants2);
-                            outfit.push_back(new Pants(pants2.getCode(), pants2.getColor()));
-                        }
-                        else if (numberPants == 3)
-                        {
-                            myBarbie.addPants(pants3);
-                            outfit.push_back(new Pants(pants3.getCode(), pants3.getColor()));
-                        }
-                        else if (numberPants == 4)
-                        {
-                            myBarbie.addPants(pants4);
-                            outfit.push_back(new Pants(pants4.getCode(), pants4.getColor()));
-                        }
+                        if (numberPants == 1) 
+                            myBarbie.addPants(std::make_unique<Pants>(*pants1));
+                        else if (numberPants == 2) 
+                            myBarbie.addPants(std::make_unique<Pants>(*pants2));
+                        else if (numberPants == 3) 
+                            myBarbie.addPants(std::make_unique<Pants>(*pants3));
+                        else if (numberPants == 4) 
+                            myBarbie.addPants(std::make_unique<Pants>(*pants4));
                     }    
                 }
                 catch(const AlreadyAddedGarment& e)
@@ -687,25 +642,13 @@ int main()
                     std::cout << "What kind of clothes do you want to remove?" << std::endl;
                     std::cin >> removeGarmentType;
                     if (toLower(removeGarmentType) == "blouse")
-                    {
                         myBarbie.removeBlouse();
-                        removeFromOutfit<Blouse>(outfit);
-                    }
                     else if (toLower(removeGarmentType) == "dress")
-                    {
                         myBarbie.removeDress();
-                        removeFromOutfit<Dress>(outfit);
-                    }
                     else if (toLower(removeGarmentType) == "skirt")
-                    {
                         myBarbie.removeSkirt();
-                        removeFromOutfit<Skirt>(outfit);
-                    }
                     else if (toLower(removeGarmentType) == "pants")
-                    {
-                        myBarbie.removePants();  
-                        removeFromOutfit<Pants>(outfit);
-                    }
+                        myBarbie.removePants();
                 }
                 catch(const NothingToRemove& e)
                 {
@@ -724,17 +667,6 @@ int main()
         }
     }
     Display(myBarbie);
-    for (Garment *cloth : outfit)
-    {
-       if (Blouse* blouse = dynamic_cast<Blouse*>(cloth))
-            blouse->describeBlouse();
-        else if (Dress* dress = dynamic_cast<Dress*>(cloth))
-            dress->describeDress();
-        else if (Skirt* skirt = dynamic_cast<Skirt*>(cloth))
-            skirt->describeSkirt();
-        else if (Pants* pants = dynamic_cast<Pants*>(cloth))
-            pants->describePants();
-    }
     std::cout << "That's the end of the game!" << std::endl;
     return 0;
 }
