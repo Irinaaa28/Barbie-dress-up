@@ -1,7 +1,7 @@
 # Barbie Dress Up Minigame Concept
 
 ## Introduction
-I have adopted and implemented the concept of "Barbie Dress Up" games, a very popular game among browser users, which has brought happiness to many girls during their childhood. 
+I have adopted and implemented the concept of "Barbie Dress Up" games, a very popular game among browser users, which has brought happiness to many girls during their childhood. I realised this project using OOP in C++.
 ## How does the code behind this minigame look like?
 Long story short, I used plenty of classes to distinguish every piece of clothing, to represent the Barbie doll and to face possible errors. Here are the steps:
 * I created an interface called "Wardrobe" where to start the whole code;
